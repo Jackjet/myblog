@@ -8,6 +8,9 @@ https://blog.csdn.net/codebay118/article/details/72630102
 https://wenku.baidu.com/view/937a612efbd6195f312b3169a45177232f60e4ef.html
 
 
+https://www.jianshu.com/p/d5a2d4db5bc0
+
+
 
 一、EvoSuite简介
     EvoSuite是由Sheffield等大学联合开发的一种开源工具，用于自动生成测试用例集，生成的测试用例均符合Junit的标准，可直接在Junit中运行。
