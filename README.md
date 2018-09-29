@@ -10,6 +10,8 @@ https://wenku.baidu.com/view/937a612efbd6195f312b3169a45177232f60e4ef.html
 
 https://www.jianshu.com/p/d5a2d4db5bc0
 
+https://www.sohu.com/a/224590187_748431
+
 
 
 一、EvoSuite简介
