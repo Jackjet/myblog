@@ -70,3 +70,53 @@ tomcat的CPU利用率达到60.12%（linux可以使用top -H）
     <MAT图3,显示 对象,堆栈线程信息,>  找到哪个对象,代码消耗的堆最多
 
     https://www.cnblogs.com/android-blogs/p/5765148.html
+    
+    ---------------------------------------------------------------------------------
+    
+    8	并发登录时，并发数达到80TPS时，响应时间突然升高
+8.1	现象
+在吞吐量达到80TPS时，打开首页和登出的响应时间突然快速升高(Jmeter 监控)。
+
+8.2	排查
+查看服务器CPU和IO后，发现没有异常（CPU在30%，队列长度接近1，IO较小，队列长度接近0）
+
+由于操作系统层没有明显的异常，出问题的是tomcat，下一步对tomcat抓了一个线程dump。查看dump内容，发现有一个BLOCKED状态的线程
+"http-nio-8080-exec-43" #149 daemon prio=5 os_prio=0 tid=0x0000000010947000 nid=0x2898 waiting for monitor entry [0x00000000273ac000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+	at java.io.PrintStream.write(PrintStream.java:478)
+	- waiting to lock <0x0000000080050520> (a java.io.PrintStream)
+	…
+锁lock< 0x0000000080050520>如下
+"http-nio-8080-exec-18" #123 daemon prio=5 os_prio=0 tid=0x00000000121c9000 nid=0x4b40 runnable [0x0000000025dad000]
+   java.lang.Thread.State: RUNNABLE
+	at java.io.FileOutputStream.writeBytes(Native Method)
+	at java.io.FileOutputStream.write(FileOutputStream.java:326)
+	at java.io.BufferedOutputStream.write(BufferedOutputStream.java:122)
+	- locked <0x0000000080050540> (a java.io.BufferedOutputStream)----------------------here
+	at java.io.PrintStream.write(PrintStream.java:480)
+	- locked <0x0000000080050520> (a java.io.PrintStream)----------------------here
+	at org.apache.tomcat.util.log.SystemLogHandler.write(SystemLogHandler.java:177)
+	at sun.nio.cs.StreamEncoder.writeBytes(StreamEncoder.java:221)at java.io.PrintStream.write(PrintStream.java:480)
+	- locked <0x0000000080050520> (a java.io.PrintStream)
+	at org.apache.tomcat.util.log.SystemLogHandler.write(SystemLogHandler.java:177)
+	at sun.nio.cs.StreamEncoder.writeBytes(StreamEncoder.java:221)
+	at sun.nio.cs.StreamEncoder.implFlushBuffer(StreamEncoder.java:291)
+	at sun.nio.cs.StreamEncoder.implFlush(StreamEncoder.java:295)
+	at sun.nio.cs.StreamEncoder.flush(StreamEncoder.java:141)
+	- locked <0x0000000081ada7f0> (a java.io.OutputStreamWriter)
+	at java.io.OutputStreamWriter.flush(OutputStreamWriter.java:229)
+	at org.apache.log4j.helpers.QuietWriter.flush(QuietWriter.java:57)----------------------日志相关
+	at org.apache.log4j.WriterAppender.subAppend(WriterAppender.java:315)
+	at org.apache.log4j.WriterAppender.append(WriterAppender.java:159)
+	at org.apache.log4j.AppenderSkeleton.doAppend(AppenderSkeleton.java:230)
+	- locked <0x0000000081ad9bf8> (a org.apache.log4j.ConsoleAppender)
+	at org.apache.log4j.helpers.AppenderAttachableImpl.appendLoopOnAppenders(AppenderAttachableImpl.java:65)
+	at org.apache.log4j.Category.callAppenders(Category.java:203)
+	- locked <0x0000000081ab9f28> (a org.apache.log4j.spi.RootLogger)
+	at org.apache.log4j.Category.forcedLog(Category.java:388)
+	at org.apache.log4j.Category.info(Category.java:663)
+
+
+8.3	解决方案
+1.将同步写日志改成异步写
+
