@@ -10,6 +10,14 @@ Jstack [PID]
 查看线程状态是否存在阻塞、死锁
 查看热点线程的调用树，判断可疑的业务代码
 Jstack结果可视化查看工具——jca工具
+死锁
+     在线程jstack的栈信息里，有一段以下信息：
+     Thread-1 持有  0x00000007d5df4970，等待获取：0x00000007d5df4960
+     Thread-0 持有  0x00000007d5df4960，等待获取：0x00000007d5df4970
+     线程Thread-1和线程Thread-0互相持有对方的锁，并等待对方释放锁，造成两个线程进入无限等待。
+     这个现象称为死锁。
+
+
 
 jmap -dump:live,format=b,file=dump.hprof [PID]
 使用MAT分析dump文件
@@ -61,4 +69,4 @@ tomcat的CPU利用率达到60.12%（linux可以使用top -H）
     <MAT图2,显示类,堆,百分比等信息>
     <MAT图3,显示 对象,堆栈线程信息,>  找到哪个对象,代码消耗的堆最多
 
-    
+    https://www.cnblogs.com/android-blogs/p/5765148.html
