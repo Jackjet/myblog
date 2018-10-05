@@ -1,0 +1,34 @@
+现象一
+    在设备接入框架执行1000个设备迁移时，平台10min没有响应。平台后端服务为tomcat
+现象二
+    查看服务器资源利用情况（通过Windows性能监视器或Zabbix）
+    <资源监控图>
+
+    linux使用top、vmstat、iostat等命令查看
+现象三
+    查看进程CPU资源利用情况
+    <procexp图 进程,线程图>
+    
+tomcat的CPU利用率达到60.12%（linux可以使用top -H）
+   使用procexp工具查看使用CPU的具体线程，发现是有多个线程消耗CPU都较多，但没有一个线程消耗CPU特别高的
+现象四
+    查看tomcat的JVM Heap的情况（jstat）
+    <jstat监控图>
+    看到这里，基本明白了出现了什么问题。JVM一直在FullGC，tomcat被挂起，无法响应业务。
+    
+现象五
+    回过头查看tomcat的线程情况（jstack）
+    使用jstack打印tomcat线程信息
+    从现象三的找到的线程33048转成十六进制0x8118，查找线程对应的业务。
+    <jstack图>
+      果然看到是GC线程在消耗CPU。
+      
+现象六
+    具体查看是什么原因导致了FullGC的产生
+    使用jmap导出dump，通过MAT分析
+<MAT图>
+    MAT提示发现一个可疑的内存泄漏问题
+    <MAT图2,显示类,堆,百分比等信息>
+    <MAT图3,显示 对象,堆栈线程信息,>  找到哪个对象,代码消耗的堆最多
+
+    
