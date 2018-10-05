@@ -66,3 +66,6 @@ select userid, dbid, query from pg_stat_statements order by (blk_read_time+blk_w
 SELECT  query, calls, total_time, (total_time/calls) as average ,rows, 
         100.0 * shared_blks_hit /nullif(shared_blks_hit + shared_blks_read, 0) AS hit_percent 
 FROM    pg_stat_statements WHERE rows > 0 ORDER   BY average DESC LIMIT 10;
+
+------------------------------------------------------------------------
+https://blog.csdn.net/nayanminxing/article/details/53023795
