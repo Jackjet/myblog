@@ -28,7 +28,7 @@ EXPLAIN  select count(?) from event e inner join XXX_A dc  on dc.uuid = e.uuid l
               ->  Seq Scan on event_20180405 e_11  (cost=0.00..266920.16 rows=6000016 width=33)
               ->  Seq Scan on event_20180406 e_12  (cost=0.00..266920.13 rows=6000013 width=33)
         ->  Hash  (cost=3971.00..3971.00 rows=100000 width=66)
-              ->  Seq Scan on device_camera dc  (cost=0.00..3971.00 rows=100000 width=66) 
+              ->  Seq Scan on XXX_A dc  (cost=0.00..3971.00 rows=100000 width=66) 
  可以看到是6张600W的表占据了绝大多数的查询时间
 
 1.3	解决方案
