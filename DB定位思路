@@ -38,5 +38,31 @@ EXPLAIN  select count(?) from event e inner join XXX_A dc  on dc.uuid = e.uuid l
 
 
 ------------------------------------------------慢查询案例--------------------------------------------------------------------
-添加40W 社区信息，打开管理页面需要20s-
+1.添加40W 社区信息，打开管理页面需要20s-
 SELECT * FROM XX_detail WHERE (uuid = ？ or path LIKE '%' || ？ || '%' ESCAPE '/') and is_deleted = '0' ORDER BY sequence
+
+2. 
+    2次120W的表的全表扫描，花费约13s，排序耗费6s（19756-13168），最后的聚合花费21s。聚合出一张120W的人员信息详情的表太慢了。
+  	解决方案: 先过滤出需要的条件，再left join需要的字段
+
+
+一个数据库中SQL调用频率Top10排序
+select s.* from pg_stat_statements s join pg_database d on d.oid = s.dbid and d.datname = current_database() ORDER BY mean_time DESC limit 10 
+
+一段时间内的总耗时Top10
+select s.* from pg_stat_statements s join pg_database d on d.oid = s.dbid and d.datname = current_database() ORDER BY total_time DESC limit 10
+
+单次最耗时(慢查询) Top10
+SELECT  query, calls, total_time, (total_time/calls) as average ,rows FROM    pg_stat_statements WHERE rows > 0  ORDER   BY average DESC LIMIT 10;
+
+单次调用最耗IO SQL TOP 10
+select userid,dbid,query,calls,total_time from pg_stat_statements order by (blk_read_time+blk_write_time)/calls desc limit 10;  
+
+总最耗IO SQL TOP 10
+select userid, dbid, query from pg_stat_statements order by (blk_read_time+blk_write_time) desc limit 10;
+
+
+单次最耗时(慢查询)SQL  Top10 & DB缓存命中情况
+SELECT  query, calls, total_time, (total_time/calls) as average ,rows, 
+        100.0 * shared_blks_hit /nullif(shared_blks_hit + shared_blks_read, 0) AS hit_percent 
+FROM    pg_stat_statements WHERE rows > 0 ORDER   BY average DESC LIMIT 10;
