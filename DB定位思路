@@ -1,0 +1,37 @@
+1.1	现象
+添加XX事件后，YY事件和ZZ事件界面全都加载不出来，提示网关超时
+1.2	排查
+1.	打开pg的pg_stat_statements后，重新点击业主人员页面
+2.	执行SQL，查看慢查询：SELECT  query, calls, total_time, (total_time/calls) as average ,rows FROM  pg_stat_statements WHERE rows > 0  ORDER   BY average DESC LIMIT 10;
+发现是以上SQL执行慢，需要82.7s、60.69s、62.48s返回
+Sql1
+select count(?) from event e inner join XXX_A dc  on dc.uuid = e.uuid left join YYY o on o.uuid = dc.org_uuid where ? = ? AND (o.uuid = $1 OR o.path like concat(?, $2,?))
+
+查看执行计划Sql1
+EXPLAIN  select count(?) from event e inner join XXX_A dc  on dc.uuid = e.uuid left join YYY o on o.uuid = dc.org_uuid where ? = ? AND (o.uuid = $1 OR o.path like concat(?, $2,?)) CTE Scan on t  (cost=1083521.50..1107521.50 rows=1200000 width=298) (actual time=19756.973..44323.061 rows=1200000 loops=1)
+
+  Aggregate  (cost=2756804.06..2756804.07 rows=1 width=8)
+  ->  Hash Join  (cost=6393.00..2666798.62 rows=36002174 width=0)
+        Hash Cond: ((e.resource_uuid)::text = (dc.uuid)::text)
+        ->  Append  (cost=0.00..1601669.73 rows=36002174 width=33)
+              ->  Seq Scan on event e  (cost=0.00..0.00 rows=1 width=82)
+              ->  Seq Scan on event_201805 e_1  (cost=0.00..10.40 rows=40 width=33)
+              ->  Seq Scan on event_201806 e_2  (cost=0.00..10.20 rows=20 width=82)
+              ->  Seq Scan on event_201807 e_3  (cost=0.00..10.20 rows=20 width=82)
+              ->  Seq Scan on event_201808 e_4  (cost=0.00..10.20 rows=20 width=82)
+              ->  Seq Scan on event_201809 e_5  (cost=0.00..10.20 rows=20 width=82)
+              ->  Seq Scan on event_201810 e_6  (cost=0.00..10.20 rows=20 width=82)
+              ->  Seq Scan on event_20180403 e_7  (cost=0.00..266965.04 rows=6001004 width=33)
+              ->  Seq Scan on event_20180402 e_8  (cost=0.00..266963.04 rows=6001004 width=33)
+              ->  Seq Scan on event_20180401 e_9  (cost=0.00..266918.14 rows=6000014 width=33)
+              ->  Seq Scan on event_20180404 e_10  (cost=0.00..266921.82 rows=5999982 width=33)
+              ->  Seq Scan on event_20180405 e_11  (cost=0.00..266920.16 rows=6000016 width=33)
+              ->  Seq Scan on event_20180406 e_12  (cost=0.00..266920.13 rows=6000013 width=33)
+        ->  Hash  (cost=3971.00..3971.00 rows=100000 width=66)
+              ->  Seq Scan on device_camera dc  (cost=0.00..3971.00 rows=100000 width=66) 
+ 可以看到是6张600W的表占据了绝大多数的查询时间
+
+1.3	解决方案
+1.	建议放弃使用count查询精准的记录数，用系统表的约数
+2.	修改搜索事件SQL过滤报警类型、报警区域的过滤条件
+3.	YY事件和ZZ事件共有一张表，在大数据量下会互相影响，建议分开
