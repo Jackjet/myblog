@@ -1,13 +1,19 @@
 常见Java问题定位工具:
 
-Jstat
+Jstat –gcutil [PID]
 初步定位Java应用是否存在内存问题
 查看JVM堆内存使用是否正常
 使用MAT分析异常的内存dump（使用Jmap导出）
-Jstack
+
+Jstack [PID]
 初步定位Java应用是否存在线程问题
 查看线程状态是否存在阻塞、死锁
 查看热点线程的调用树，判断可疑的业务代码
+Jstack结果可视化查看工具——jca工具
+
+jmap -dump:live,format=b,file=dump.hprof [PID]
+使用MAT分析dump文件
+
 Jmc
 初步判断是Java应用存在性能问题时，使用Jmc定位详细问题原因
 GCLOG
