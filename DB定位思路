@@ -34,4 +34,9 @@ EXPLAIN  select count(?) from event e inner join XXX_A dc  on dc.uuid = e.uuid l
 1.3	解决方案
 1.	建议放弃使用count查询精准的记录数，用系统表的约数
 2.	修改搜索事件SQL过滤报警类型、报警区域的过滤条件
-3.	YY事件和ZZ事件共有一张表，在大数据量下会互相影响，建议分开
+3.	YY事件和ZZ事件共有一张表，在大数据量下会互相影响，建议分开\
+
+
+------------------------------------------------慢查询案例--------------------------------------------------------------------
+添加40W 社区信息，打开管理页面需要20s-
+SELECT * FROM XX_detail WHERE (uuid = ？ or path LIKE '%' || ？ || '%' ESCAPE '/') and is_deleted = '0' ORDER BY sequence
