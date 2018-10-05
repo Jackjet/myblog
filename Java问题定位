@@ -12,6 +12,14 @@ Jmc
 初步判断是Java应用存在性能问题时，使用Jmc定位详细问题原因
 GCLOG
 稳定性测试、长时间测试时使用，记录Java应用内存变化趋势
+Linux
+      运行命令的用户必须和Java进程运行的用户一致。应用使用root用户启动，必须使用root用户运行Java工具。
+
+Windows
+      Windows下，要求与Linux是相同的，运行工具的用户与Java进程运行的用户一致。
+      Windows用户体系与Linux不同，最高权限用户是System，Java应用已服务方式运行时，所属用户都是System。一般无法直接切换成System用户。
+      使用PStool的PsExec来实现获取System权限
+      在命令行中，使用PsExec.exe –s [Java工具绝对路径  Java工具参数]
 
 
 现象一
