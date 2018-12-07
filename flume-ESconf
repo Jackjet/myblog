@@ -1,0 +1,36 @@
+#--------------------flume-env.sh中配置(把使用的ES的库引入):
+ 
+#FLUME_CLASSPATH="/home/elasticsearch-6.4.2/lib/*"
+FLUME_CLASSPATH="/home/elasticsearch-1.7.1/lib/*"
+
+#--------------------flume-conf配置文件:
+agent.sources = esSlowLog
+agent.channels = memChannel
+agent.sinks = sinkES
+
+# For each one of the sources, the type is defined
+agent.sources.esSlowLog.type = exec
+agent.sources.esSlowLog.command= tail  -F /mnt/disk1/log/cluster001/SERVICE-ELASTICSEARCH-c5b028a11d5d4ad5bfb68ed489bb9c74/SERVICE-ELASTICSEARCH-c5b028a11d5d4ad5bfb68ed489bb9c74_index_indexing_slowlog.log
+agent.sources.esSlowLog.channels = c1
+
+# bind the source and sink to the channel
+agent.sources.esSlowLog.channels = memChannel
+agent.sinks.sinkES.channel=memChannel
+
+# Each sink's type must be defined
+agent.sinks.loggerSink.type = logger
+
+#Specify the channel the sink should use
+agent.sinks.sinkES.channel = memoryChannel
+agent.sinks.sinkES.type=org.apache.flume.sink.elasticsearch.ElasticSearchSink
+agent.sinks.sinkES.batchSize=100
+agent.sinks.sinkES.hostNames=10.66.170.116:9300
+agent.sinks.sinkES.indexName=ES_index_slow
+agent.sinks.sinkES.indexType=message
+agent.sinks.sinkES.clusterName=elasticsearch
+agent.sinks.sinkES.serializer=org.apache.flume.sink.elasticsearch.ElasticSearchLogStashEventSerializer
+
+
+# Each channel's type is defined.
+agent.channels.memoryChannel.type = memory
+
