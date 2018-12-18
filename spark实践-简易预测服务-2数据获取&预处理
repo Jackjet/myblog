@@ -1,0 +1,134 @@
+我们假设数据已经在客户的DB中, 我们定期启动Spark任务从客户的DB中拉取最新的数据清洗,数值化,并保存:
+
+从客户Mysql读取当天的数据并保存到本地系统中
+部分代码：
+
+    val sc = new SparkContext(conf)
+    val sqlContext = new SQLContext(sc)
+   def main(args: Array[String]): Unit = {
+     hdfsPath = args(0)
+     proPath = args(1)
+     tablename= args(2)
+     sql="(select * from "+tablename+" ) as mydata"
+     //不过滤读取
+     val dim_sys_city_dict: DataFrame = readMysqlTable(sqlContext, sql, proPath)
+
+     //保存数据到存储系统中
+     saveAsFileAbsPath(dim_sys_city_dict, hdfsPath + tablename, "|", SaveMode.Overwrite)
+     ...
+     //<data washing>
+     ...
+   }
+ 
+   /**
+     * 获取 Mysql 表的数据
+     *
+     * @param sqlContext
+     * @param tableName 读取Mysql表的名字
+     * @param proPath   配置文件的路径
+     * @return 返回 Mysql 表的 DataFrame
+     */
+   def readMysqlTable(sqlContext: SQLContext, sql: String, proPath: String): DataFrame = {
+     val properties: Properties = getProPerties(proPath)
+     sqlContext
+       .read
+       .format("jdbc")
+       .option("url", properties.getProperty("mysql.url"))
+       .option("driver", properties.getProperty("mysql.driver"))
+       .option("user", properties.getProperty("mysql.username"))
+       .option("password", properties.getProperty("mysql.password"))
+       .option("dbtable", sql)
+       .load()
+   }
+   
+   def saveAsFileAbsPath(dataFrame: DataFrame, absSaveDir: String, splitRex: String, saveMode: SaveMode): Unit = {
+     dataFrame.sqlContext.sparkContext.hadoopConfiguration.set("mapred.output.compress", "false")
+     val allClumnName: String = dataFrame.columns.mkString(",")
+     val result: DataFrame = dataFrame.selectExpr(s"concat_ws('$splitRex',$allClumnName) as allclumn")
+     result.write.mode(saveMode).text(absSaveDir)
+   }
+
+   def getProPerties(proPath: String): Properties = {
+     val properties: Properties = new Properties()
+     properties.load(new FileInputStream(proPath))
+     properties
+   }    
+2.数据预处理与特征工程
+本地保存后继续做处理流程如下：
+
+2.1缺失值处理：
+数值型变量没有缺失。非数值型变量可能存在unknown值。使用如下代码查看字符型变量unknown值的个数。
+
+缺失值处理通常有如下的方法：
+
+对于unknown值数量较少的变量，包括job和marital，删除这些变量是缺失值(unknown)的行；
+如果预计该变量对于学习模型效果影响不大，可以对unknown值赋众数，这里认为变量都对学习模型有较大影响，不采取此法；
+由于我们数据缺失值基本很少,因此采用第一种策略--如果缺失,直接删除
+
+val data1 = data.toDF("age","job","marital","education","default","housing","loan","contact","month","day_of_week","duration","campaign","pdays","previous","poutcome","emp.var.rate","cons.price.idx","cons.conf.idx","euribor3m","nr.employed","y")
+//删除有空值的行
+val resNull=data1.na.drop()
+resNull.limit(10).show()
+2.2分类变量数值化：
+分类变量参与模型计算，我们需要将String类型变量数值化编码
+
+2.2.1 二元分类变量编码
+标签列Y的值只有 yes 和No 两种, 属于2元分类变量, 可以通过定义UDF函数的方式转换成字符型,如
+
+val udf_lable2Int = (arg: String) => { if (arg == "yes") 1 else 0 } 
+val addLabelValue = udf(udf_lable2Int)
+// 增加一列 
+val JobValue = df1.withColumn("LabelValue", addLabelValue(df1("y"))) 
+addJobValue.show(3, false)
+
+
+2.2.2 有序分类变量编码
+
+变量education是有序分类变量，影响大小排序为"illiterate", "basic.4y", "basic.6y", "basic.9y", "high.school", "professional.course", "university.degree", 变量影响由小到大的顺序编码为1、2、3、...，
+
+val udf_edu2Int = (arg: String) => { 
+if (arg == "illiterate") 1 
+else if (arg == "basic.4y") 2
+else if (arg == "basic.6y") 3
+else if (arg == "basic.9y") 4
+else if (arg == "high.school") 5
+else if (arg == "professional.course") 6
+else if (arg == "university.degree") 7
+else 8
+} 
+val addEduValue = udf(udf_edu2Int)
+// 增加一列 ,dfx表示上一次操作的DF结构
+val EduValue = dfx.withColumn("EduValue", addEduValue(df1("education"))) 
+EduValue.show(3, false)
+
+
+2.2.3 无序分类变量编码
+变量job，marital，contact，month，day_of_week为无序分类变量, n个分类需要设置n-1个哑变量。例如，变量marital分为divorced、married、single
+
+marital	V1	V2
+divorced	0	0
+married	1	0
+single	0	1
+还是使用UDF函数实现
+
+val udf_maritalIsSingel = (arg: String) => { 
+if (arg == "single") 1 
+else 0
+}
+
+val udf_maritalIsMarried = (arg: String) => { 
+if (arg == "married") 1 
+else 0
+}
+val isSingle = udf(udf_lable2Int)
+val ismarried = udf(udf_lable2Int)
+// 增加2列 ,dfx表示上一次操作的DF结构
+val martiralV1 = dfx.withColumn("martiralV1", ismarried(df1("marital")))
+val martiralV2 = dfx.withColumn("martiralV2", isSingle(df1("marital")))
+addJobValue.show(3, false)
+按照上面的规律把数据中所有的String类型变量都数值化
+
+
+
+2.3 数值特征预处理：
+https://www.cppentry.com/bencandy.php?fid=57&aid=154239&page=2
