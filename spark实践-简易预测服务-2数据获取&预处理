@@ -97,8 +97,8 @@ else if (arg == "university.degree") 7
 else 8
 } 
 val addEduValue = udf(udf_edu2Int)
-// 增加一列 ,dfx表示上一次操作的DF结构
-val EduValue = dfx.withColumn("EduValue", addEduValue(df1("education"))) 
+// 增加一列 ,,dfx表示上一次操作的DF结构
+val EduValue = dfx.withColumn("EduValue", addEduValue(dfx("education"))) 
 EduValue.show(3, false)
 
 
@@ -123,12 +123,52 @@ else 0
 val isSingle = udf(udf_lable2Int)
 val ismarried = udf(udf_lable2Int)
 // 增加2列 ,dfx表示上一次操作的DF结构
-val martiralV1 = dfx.withColumn("martiralV1", ismarried(df1("marital")))
-val martiralV2 = dfx.withColumn("martiralV2", isSingle(df1("marital")))
+val martiralV1 = dfx.withColumn("martiralV1", ismarried(dfx("marital")))
+val martiralV2 = dfx.withColumn("martiralV2", isSingle(dfx("marital")))
 addJobValue.show(3, false)
 按照上面的规律把数据中所有的String类型变量都数值化
 
 
 
 2.3 数值特征预处理：
-https://www.cppentry.com/bencandy.php?fid=57&aid=154239&page=2
+2.3.1 连续型特征离散化
+将连续型特征离散化的一个好处是可以有效地克服数据中隐藏的缺陷： 使模型结果更加稳定;
+
+例如，数据中的极端值是影响模型效果的一个重要因素。极端值导致模型参数过高或过低，或导致模型被虚假现象"迷惑"，把原来不存在的关系作为重要模式来学习; 而离散化，尤其是等距离散，可以有效地减弱极端值和异常值的影响。
+
+原始数据集的统计信息，可以看出变量duration的最大值为4918，而75%分位数为319，远小于最大值，而且该变量的标准差为259，相对也比较大。因此对变量duration进行离散化
+
+Spark中提供bucketize 可以实现
+
+分为4个组：[负无穷,0),[0,400),[400,5000),[5000,正无穷)
+val splits = Array(Double.NegativeInfinity, 0.0, 400, 5000, Double.PositiveInfinity)
+
+val bucketizer = new Bucketizer()
+      .setInputCol("duration")
+      .setOutputCol("durationValue")
+      .setSplits(splits)
+
+    // 将原始数据转换为桶索引
+    val bucketedData = bucketizer.transform(dfx("duration"))
+
+    bucketedData.show(20,truncate=false)
+2.3.3 规范化
+同变量常常使用不同的度量单位，从数值上看它们相差很大，容易使基于距离度量的学习模型更容易受数值较大的变量影响。数据规范化就是将数据压缩到一个范围内，从而使得所有变量的单位影响一致
+
+有几个数值型类型cons.price.idx,previous 等列做如下类似处理
+
+val scaler = new StandardScaler()
+.setInputCol("cons.price.idx")
+.setOutputCol("cons.price.idxFeatures")
+.setWithStd(true)
+.setWithMean(false)
+ 
+// Compute summary statistics by fitting the StandardScaler.
+val scalerModel = scaler.fit(dfx)
+val scaledData1 = scalerModel.transform(dfx)
+scaledData1.show(10)
+
+
+2.3.4 持久化预处理后的数据
+saveAsFileAbsPath(dim_sys_city_dict, hdfsPath + filename, "|", SaveMode.Overwrite)
+
