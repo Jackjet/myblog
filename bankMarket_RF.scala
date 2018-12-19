@@ -8,7 +8,7 @@ object RandomForestClassifierBank {
       .getOrCreate()
     // $example on$
     // Load and parse the data file, converting it to a DataFrame.
-    val df = spark.read.format("csv").option("header","true").option("inferSchema",true.toString).load("D:\\code\\sparkProject\\sparkInput\\bank-additional/bank-additional-full_washed.csv")
+    val df = spark.read.format("csv").option("header","true").option("inferSchema",true.toString).load("XX\\sparkInput\\bank-additional/bank-additional-full_washed.csv")
     // Split the data into training and test sets (30% held out for testing).
     df.show(3)
     df.printSchema
